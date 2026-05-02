@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+        <link rel="stylesheet" href="css/L.Control.Locate.min.css">
+        <link rel="stylesheet" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/leaflet.photon.css">
+        <style>
+        .leaflet-control-scale-line {
+            font-size: 14px !important;
+            font-weight: bold !important;
+            padding: 4px 8px !important;
+            border: 2px solid #b3b0b0 !important;
+            background: rgba(255,255,255,0.9) !important;
+            min-width: 120px !important;
+            text-align: center !important;
+        }
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        </style>
+        <title>Melbourne Urban Heat Explorer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+    </script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+</script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    </head>
+    <body>
+        <div id="mapTitle" style="
+            position:absolute; top:10px; left:50%;
+            transform:translateX(-50%); z-index:1000;
+            background:rgba(255,255,255,0.93);
+            padding:8px 22px; border-radius:4px;
+            font-family:Arial,sans-serif; font-size:25px;
+            font-weight:bold; color:#1F3864;
+            border:1px solid #ccc; pointer-events:none;
+            text-align:center;">
+            Melbourne Urban Heat Island Explorer<br>
+            <span style="font-size:16px; font-weight:normal;
+            color:#2E75B6;">An Open-Source Web GIS Application</span>
+        </div>
+<!-- Collapsed toggle button — always visible -->
+<div id="infoBtnWrapper" style="
+  position:absolute; top:10px; left:50px; z-index:1001;">
+  <button id="infoToggleBtn" onclick="toggleInfo()" style="
+    background:#1F3864; color:white; border:none;
+    padding:6px 12px; border-radius:4px; cursor:pointer;
+    font-family:Arial,sans-serif; font-size:20px;
+    box-shadow:0 2px 5px rgba(0,0,0,0.2);">
+    ℹ About
+  </button>
+</div>
+<!-- Full info panel — hidden by default -->
+<div id="infoPanel" style="
+  display:none;
+  position:absolute; top:15px; left:50px; z-index:1000;
+  background:rgba(255,255,255,0.97); padding:14px 16px;
+  border-radius:6px; width:260px; font-family:Arial,sans-serif;
+  font-size:14px; border:1px solid #ccc; line-height:1.6;
+  box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+  <!-- Close button -->
+  <div style="text-align:right; margin-bottom:4px;">
+    <span onclick="toggleInfo()" style="
+      cursor:pointer; color:#888; font-size:14px;
+      font-weight:bold;" title="Close">✕</span>
+  </div>
+  <!-- Header -->
+  <div style="font-size:14px; font-weight:bold; color:#1F3864;
+    border-bottom:2px solid #2E75B6; padding-bottom:5px;
+    margin-bottom:8px;">
+    🌡️ About this Application
+  </div>
+  <!-- Story -->
+  <p style="margin:0 0 8px 0; color:#333;">
+    As cities grow, concrete and asphalt absorb and re-emit
+    solar radiation, creating pockets of intense heat —
+    the <strong>Urban Heat Island (UHI) effect</strong>.
+    In Melbourne, surface temperatures vary by up to
+    <strong>10°C</strong> across just a few kilometres.
+  </p>
+  <!-- Purpose -->
+  <div style="background:#EEF4FB; border-left:3px solid #2E75B6;
+    padding:6px 9px; border-radius:0 4px 4px 0; margin-bottom:8px;">
+    <strong style="color:#1F3864; font-size:14px;">PURPOSE</strong><br>
+    The <em>Urban Heat Explorer</em> maps Land Surface Temperature
+    across Melbourne and examines how building typology and tree
+    canopy interact with surface heat patterns.
+  </div>
+  <!-- Aim -->
+  <div style="background:#F3FBF4; border-left:3px solid #2E7D32;
+    padding:6px 9px; border-radius:0 4px 4px 0; margin-bottom:10px;">
+    <strong style="color:#1B5E20; font-size:14px;">AIM</strong><br>
+    To provide an interactive, browser-based tool for exploring
+    the spatial relationship between urban heat, building roof
+    type, and tree canopy coverage in Melbourne.
+  </div>
+  <!-- Datasets -->
+  <div style="font-size:11px; font-weight:bold; color:#555;
+    text-transform:uppercase; letter-spacing:0.5px;
+    margin-bottom:5px;">Datasets</div>
+  <table style="width:100%; border-collapse:collapse;
+    font-size:11px; color:#333;">
+    <tr style="background:#1F3864; color:white;">
+      <td style="padding:5px 7px; font-weight:bold;">Layer</td>
+      <td style="padding:5px 7px; font-weight:bold;">Source</td>
+    </tr>
+    <tr style="background:#EEF4FB;">
+      <td style="padding:5px 7px; border-bottom:1px solid #ddd;">
+        <strong>🌡 LST Zones</strong><br>
+        <span style="color:#666;">5-class temperature surface,
+        Landsat 8/9 Band 10, Natural Breaks (Jenks)</span>
+      </td>
+      <td style="padding:5px 7px; border-bottom:1px solid #ddd;
+        vertical-align:top; color:#2E75B6;">
+        iGEE Webtool
+      </td>
+    </tr>
+    <tr style="background:#F9F9F9;">
+      <td style="padding:5px 7px; border-bottom:1px solid #ddd;">
+        <strong>🏢 Buildings</strong><br>
+        <span style="color:#666;">Footprints by roof type
+        (flat, hip, gable, pyramid) and avg height</span>
+      </td>
+      <td style="padding:5px 7px; border-bottom:1px solid #ddd;
+        vertical-align:top; color:#2E75B6;">
+        City of Melbourne
+      </td>
+    </tr>
+    <tr style="background:#EEF4FB;">
+      <td style="padding:5px 7px;">
+        <strong>🌳 Tree Canopy</strong><br>
+        <span style="color:#666;">80,000+ trees, species, DBH,
+        life expectancy. <em>Live API.</em></span>
+      </td>
+      <td style="padding:5px 7px; vertical-align:top;
+        color:#2E75B6;">
+        CoM Urban Forest API
+      </td>
+    </tr>
+  </table>
+  <div style="margin-top:9px; padding-top:7px;
+    border-top:1px solid #eee; font-size:10px; color:#999;
+    text-align:center;">
+    RMIT University &nbsp;|&nbsp; GEOM2138/2151 &nbsp;|&nbsp; 2026
+  </div>
+</div>
+
+      <div id="lstFilter" style="
+        position:absolute; top:170px; right:10px; z-index:1000;
+        background:rgba(255,255,255,0.95); padding:10px 12px;
+        border-radius:4px; width:240px; font-family:Arial,sans-serif;
+        font-size:12px; border:1px solid #ccc;">
+        <strong style="font-size:13px; color:#1F3864;">
+            Temperature Filter
+        </strong>
+        <hr style="margin:6px 0; border-color:#ddd;">
+        <label>Show zones &ge; <span id="lstVal">17.7</span> &deg;C</label>
+        <input type="range" id="lstRange"
+            min="17" max="28" value="17.7" step="0.1"
+            style="width:100%; margin-top:5px;">
+        <div style="display:flex; justify-content:space-between;
+            font-size:10px; color:#888; margin-top:2px;">
+            <span>17&deg;C</span>
+            <span>Cool &rarr; Hot</span>
+            <span>28&deg;C</span>
+        </div>
+        </div>
+<div id="histPanel" style="
+  position:absolute; top:300px; right:10px; z-index:1000;
+  background:rgba(255,255,255,0.95); padding:10px 12px;
+  border-radius:4px; width:240px; border:1px solid #ccc;
+  font-family:Arial,sans-serif;">
+  <strong style="font-size:14px; color:#1F3864;">
+    Temperature Distribution
+  </strong>
+  <canvas id="lstChart" width="220" height="130"
+    style="margin-top:6px; display:block;">
+  </canvas>
+</div>
+<div id="treeControl" style="
+  position:absolute; top:510px; right:10px; z-index:1000;
+  background:rgba(255,255,255,0.95); padding:10px 14px;
+  border-radius:4px; width:240px; font-family:Arial,sans-serif;
+  font-size:12px; border:1px solid #ccc;">
+  <strong style="font-size:13px; color:#1F3864;">
+    Tree Canopy (Live API)
+  </strong>
+  <hr style="margin:6px 0; border-color:#ddd;">
+  <div id="treeStatus" style="color:#888; margin-bottom:6px;">
+    Loading trees...
+  </div>
+  <button id="treeToggle" style="width:100%; padding:5px;
+    background:#1B5E20; color:white; border:none;
+    border-radius:3px; cursor:pointer; font-size:12px;">
+    Hide Trees
+  </button>
+  <hr style="margin:6px 0; border-color:#ddd;">
+  <strong style="font-size:11px;">Age Class:</strong><br>
+  <div style="font-size:11px; margin-top:4px; line-height:1.8;">
+    <span style="display:inline-block; width:10px; height:10px;
+      border-radius:50%; background:#27F538; margin-right:5px;"></span>Young<br>
+    <span style="display:inline-block; width:10px; height:10px;
+      border-radius:50%; background:#3BA341; margin-right:5px;"></span>Mature<br>
+    <span style="display:inline-block; width:10px; height:10px;
+      border-radius:50%; background:#BEC211; margin-right:5px;"></span>Over-mature<br>
+    <span style="display:inline-block; width:10px; height:10px;
+      border-radius:50%; background:#F2F2F2; margin-right:5px;"></span>Unknown
+  </div>
+  <hr style="margin:6px 0; border-color:#ddd;">
+  <strong style="font-size:11px;">Search species:</strong><br>
+  <input type="text" id="treeSearch"
+    placeholder="e.g. Oak, Elm, Eucalyptus"
+    style="width:100%; margin-top:4px; padding:4px 6px;
+    font-size:11px; border:1px solid #ccc; border-radius:3px;
+    box-sizing:border-box;">
+  <div id="treeSearchCount" style="font-size:10px;
+    color:#888; margin-top:3px;"></div>
+    <hr style="margin:6px 0; border-color:#ddd;">
+  <button id="heatToggle" style="width:100%; padding:5px;
+    background:#BF360C; color:white; border:none;
+    border-radius:3px; cursor:pointer; font-size:12px;">
+    Show Tree Heatmap
+  </button>
+</div>
+
+        <div id="map">
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script>
+        <script src="js/L.Control.Layers.Tree.min.js"></script>
+        <script src="js/L.Control.Locate.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet.photon.js"></script>
+        <script src="data/mb_city_temperature_1.js"></script>
+        <script src="data/mb_city_buildings_2.js"></script>
+        <script>
+        var highlightLayer;
+        function highlightFeature(e) {
+            highlightLayer = e.target;
+            highlightLayer.openPopup();
+        }
+        var map = L.map('map', {
+            zoomControl:false, maxZoom:18, minZoom:10
+        }).fitBounds([[-37.85882189511541,144.90269065514784],[-37.766796709340895,144.99841140347587]]);
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        // remove popup's row if "visible-with-data"
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+        // modify popup if contains media
+        function addClassToPopupIfMedia(content, popup) {
+            var tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            var imgTd = tempDiv.querySelector('td img');
+            if (imgTd) {
+                var src = imgTd.getAttribute('src');
+                if (/\.(jpg|jpeg|png|gif|bmp|webp|avif)$/i.test(src)) {
+                    popup._contentNode.classList.add('media');
+                    setTimeout(function() {
+                        popup.update();
+                    }, 10);
+                } else if (/\.(mp3|wav|ogg|aac)$/i.test(src)) {
+                    var audio = document.createElement('audio');
+                    audio.controls = true;
+                    audio.src = src;
+                    imgTd.parentNode.replaceChild(audio, imgTd);
+                    popup._contentNode.classList.add('media');
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else if (/\.(mp4|webm|ogg|mov)$/i.test(src)) {
+                    var video = document.createElement('video');
+                    video.controls = true;
+                    video.src = src;
+                    video.style.width = "400px";
+                    video.style.height = "300px";
+                    video.style.maxHeight = "60vh";
+                    video.style.maxWidth = "60vw";
+                    imgTd.parentNode.replaceChild(video, imgTd);
+                    popup._contentNode.classList.add('media');
+                    // Aggiorna il popup quando il video carica i metadati
+                    video.addEventListener('loadedmetadata', function() {
+                        popup.update();
+                    });
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else {
+                    popup._contentNode.classList.remove('media');
+                }
+            } else {
+                popup._contentNode.classList.remove('media');
+            }
+        }
+        var zoomControl = L.control.zoom({
+            position: 'topleft'
+        }).addTo(map);
+        L.control.locate({locateOptions: {maxZoom: 19}}).addTo(map);
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+        }
+        map.createPane('pane_Positronretina_0');
+        map.getPane('pane_Positronretina_0').style.zIndex = 400;
+        var layer_Positronretina_0 = L.tileLayer('https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png', {
+            pane: 'pane_Positronretina_0',
+            opacity: 1.0,
+            attribution: '<a href="https://cartodb.com/basemaps/">Map tiles by CartoDB, under CC BY 4.0. Data by OpenStreetMap, under ODbL.</a>',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 20
+        });
+        layer_Positronretina_0;
+        map.addLayer(layer_Positronretina_0);
+        function pop_mb_city_temperature_1(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['gid'] !== null ? autolinker.link(String(feature.properties['gid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['sa1_code21'] !== null ? autolinker.link(String(feature.properties['sa1_code21']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['chg_lbl21'] !== null ? autolinker.link(String(feature.properties['chg_lbl21']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['sa2_code21'] !== null ? autolinker.link(String(feature.properties['sa2_code21']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">sa2_name21</th>\
+                        <td>' + (feature.properties['sa2_name21'] !== null ? autolinker.link(String(feature.properties['sa2_name21']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['sa3_code21'] !== null ? autolinker.link(String(feature.properties['sa3_code21']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['sa3_name21'] !== null ? autolinker.link(String(feature.properties['sa3_name21']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">sa4_code21</th>\
+                        <td>' + (feature.properties['sa4_code21'] !== null ? autolinker.link(String(feature.properties['sa4_code21']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['sa4_name21'] !== null ? autolinker.link(String(feature.properties['sa4_name21']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['gcc_code21'] !== null ? autolinker.link(String(feature.properties['gcc_code21']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['gcc_name21'] !== null ? autolinker.link(String(feature.properties['gcc_name21']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ste_code21'] !== null ? autolinker.link(String(feature.properties['ste_code21']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ste_name21'] !== null ? autolinker.link(String(feature.properties['ste_name21']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['areasqkm21'] !== null ? autolinker.link(String(feature.properties['areasqkm21']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">landsat8_9</th>\
+                        <td class="visible-with-data" id="landsat8_9">' + (feature.properties['landsat8_9'] !== null ? autolinker.link(String(feature.properties['landsat8_9']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_mb_city_temperature_1_0(feature) {
+            if (feature.properties['landsat8_9'] >= 17.688700 && feature.properties['landsat8_9'] <= 19.269814 ) {
+                return {
+                pane: 'pane_mb_city_temperature_1',
+                opacity: 1,
+                color: 'rgba(35,35,35,0.848)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(43,131,186,0.848)',
+                interactive: true,
+            }
+            }
+            if (feature.properties['landsat8_9'] >= 19.269814 && feature.properties['landsat8_9'] <= 21.456700 ) {
+                return {
+                pane: 'pane_mb_city_temperature_1',
+                opacity: 1,
+                color: 'rgba(35,35,35,0.848)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(171,221,164,0.848)',
+                interactive: true,
+            }
+            }
+            if (feature.properties['landsat8_9'] >= 21.456700 && feature.properties['landsat8_9'] <= 23.269814 ) {
+                return {
+                pane: 'pane_mb_city_temperature_1',
+                opacity: 1,
+                color: 'rgba(35,35,35,0.848)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,255,191,0.848)',
+                interactive: true,
+            }
+            }
+            if (feature.properties['landsat8_9'] >= 23.269814 && feature.properties['landsat8_9'] <= 26.000234 ) {
+                return {
+                pane: 'pane_mb_city_temperature_1',
+                opacity: 1,
+                color: 'rgba(35,35,35,0.848)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(253,174,97,0.848)',
+                interactive: true,
+            }
+            }
+            if (feature.properties['landsat8_9'] >= 26.000234 && feature.properties['landsat8_9'] <= 27.180553 ) {
+                return {
+                pane: 'pane_mb_city_temperature_1',
+                opacity: 1,
+                color: 'rgba(35,35,35,0.848)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(215,25,28,0.848)',
+                interactive: true,
+            }
+            }
+        }
+        map.createPane('pane_mb_city_temperature_1');
+        map.getPane('pane_mb_city_temperature_1').style.zIndex = 401;
+        map.getPane('pane_mb_city_temperature_1').style['mix-blend-mode'] = 'normal';
+        var layer_mb_city_temperature_1 = new L.geoJson(json_mb_city_temperature_1, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_mb_city_temperature_1',
+            layerName: 'layer_mb_city_temperature_1',
+            pane: 'pane_mb_city_temperature_1',
+            onEachFeature: pop_mb_city_temperature_1,
+            style: style_mb_city_temperature_1_0,
+        });
+        bounds_group.addLayer(layer_mb_city_temperature_1);
+        map.addLayer(layer_mb_city_temperature_1);
+        function pop_mb_city_buildings_2(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['gid'] !== null ? autolinker.link(String(feature.properties['gid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['objectid'] !== null ? autolinker.link(String(feature.properties['objectid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['structure_'] !== null ? autolinker.link(String(feature.properties['structure_']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['footprint_'] !== null ? autolinker.link(String(feature.properties['footprint_']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2"><strong>roof_type</strong><br />' + (feature.properties['roof_type'] !== null ? autolinker.link(String(feature.properties['roof_type']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['footprin_1'] !== null ? autolinker.link(String(feature.properties['footprin_1']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['footprin_2'] !== null ? autolinker.link(String(feature.properties['footprin_2']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['structur_1'] !== null ? autolinker.link(String(feature.properties['structur_1']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['structur_2'] !== null ? autolinker.link(String(feature.properties['structur_2']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['footprin_3'] !== null ? autolinker.link(String(feature.properties['footprin_3']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['structur_3'] !== null ? autolinker.link(String(feature.properties['structur_3']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['date_captu'] !== null ? autolinker.link(String(feature.properties['date_captu']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">avg_hgt</th>\
+                        <td>' + (feature.properties['avg_hgt'] !== null ? autolinker.link(String(feature.properties['avg_hgt']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_mb_city_buildings_2_0() {
+            return {
+                pane: 'pane_mb_city_buildings_2',
+                opacity: 1,
+                color: 'rgba(47,68,82,0.0)',
+                dashArray: '2.0,1.0',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(45,45,45,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_mb_city_buildings_2');
+        map.getPane('pane_mb_city_buildings_2').style.zIndex = 402;
+        map.getPane('pane_mb_city_buildings_2').style['mix-blend-mode'] = 'normal';
+        var layer_mb_city_buildings_2 = new L.geoJson(json_mb_city_buildings_2, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_mb_city_buildings_2',
+            layerName: 'layer_mb_city_buildings_2',
+            pane: 'pane_mb_city_buildings_2',
+            onEachFeature: pop_mb_city_buildings_2,
+            style: style_mb_city_buildings_2_0,
+        });
+        bounds_group.addLayer(layer_mb_city_buildings_2);
+        map.addLayer(layer_mb_city_buildings_2);
+        const url = {"Nominatim OSM": "https://nominatim.openstreetmap.org/search?format=geojson&addressdetails=1&",
+        "France BAN": "https://api-adresse.data.gouv.fr/search/?"}
+        var photonControl = L.control.photon({
+            url: url["Nominatim OSM"],
+            feedbackLabel: '',
+            position: 'topleft',
+            includePosition: true,
+            initial: true,
+            // resultsHandler: myHandler,
+        }).addTo(map);
+        photonControl._container.childNodes[0].style.borderRadius="10px"
+        // Create a variable to store the geoJSON data
+        var x = null;
+        // Create a variable to store the marker
+        var marker = null;
+        // Add an event listener to the Photon control to create a marker from the returned geoJSON data
+        var z = null;
+        photonControl.on('selected', function(e) {
+            console.log(photonControl.search.resultsContainer);
+            if (x != null) {
+                map.removeLayer(obj3.marker);
+                map.removeLayer(x);
+            }
+            obj2.gcd = e.choice;
+            x = L.geoJSON(obj2.gcd).addTo(map);
+            var label = typeof obj2.gcd.properties.label === 'undefined' ? obj2.gcd.properties.display_name : obj2.gcd.properties.label;
+            obj3.marker = L.marker(x.getLayers()[0].getLatLng()).bindPopup(label).addTo(map);
+            map.setView(x.getLayers()[0].getLatLng(), 17);
+            z = typeof e.choice.properties.label === 'undefined'? e.choice.properties.display_name : e.choice.properties.label;
+            console.log(e);
+            e.target.input.value = z;
+        });
+        var search = document.getElementsByClassName("leaflet-photon leaflet-control")[0];
+        search.classList.add("leaflet-control-search")
+        search.style.display = "flex";
+        search.style.backgroundColor="rgba(255,255,255,0.5)" 
+
+        // Create the new button element
+        var button = document.createElement("div");
+        button.id = "gcd-button-control";
+        button.className = "gcd-gl-btn fa fa-search search-button";
+
+        // Insert the button at the beginning of the search control
+        search.insertBefore(button, search.firstChild);
+        last = search.lastChild;
+        last.style.display = "none";
+        button.addEventListener("click", function (e) {
+            if (last.style.display === "none") {
+                last.style.display = "block";
+            } else {
+                last.style.display = "none";
+            }
+        });
+        var overlaysTree = [
+            {label: '<img src="legend/mb_city_buildings_2.png" /> mb_city_buildings', layer: layer_mb_city_buildings_2},
+            {label: 'mb_city_temperature<br /><table><tr><td style="text-align: center;"><img src="legend/mb_city_temperature_1_LowTemperatureZone1719C0.png" /></td><td>Low Temperature Zone (17 – 19°C)</td></tr><tr><td style="text-align: center;"><img src="legend/mb_city_temperature_1_SubLowTemperatureZone19121C1.png" /></td><td>Sub-Low Temperature Zone (19.1 – 21°C) </td></tr><tr><td style="text-align: center;"><img src="legend/mb_city_temperature_1_MediumTemperatureZone21123C2.png" /></td><td>Medium Temperature Zone (21.1 – 23°C)</td></tr><tr><td style="text-align: center;"><img src="legend/mb_city_temperature_1_SubHighTemperatureZone23126C3.png" /></td><td>Sub-High Temperature Zone (23.1 – 26°C)</td></tr><tr><td style="text-align: center;"><img src="legend/mb_city_temperature_1_HighTemperatureZone26C4.png" /></td><td>High Temperature Zone (>26 °C)</td></tr></table>', layer: layer_mb_city_temperature_1},
+            {label: "Positron (retina)", layer: layer_Positronretina_0, radioGroup: 'bm' },]
+        var lay = L.control.layers.tree(null, overlaysTree,{
+            //namedToggle: true,
+            //selectorBack: false,
+            //closedSymbol: '&#8862; &#x1f5c0;',
+            //openedSymbol: '&#8863; &#x1f5c1;',
+            //collapseAll: 'Collapse all',
+            //expandAll: 'Expand all',
+            collapsed: true,
+        });
+        lay.addTo(map);
+        setBounds();
+        L.control.scale({ position: 'bottomleft', metric: true, imperial: false }).addTo(map);
+        // ── INFO PANEL TOGGLE ────────────────────────────────────────
+        function toggleInfo() {
+        var panel = document.getElementById('infoPanel');
+        var btn   = document.getElementById('infoToggleBtn');
+        if (panel.style.display === 'none') {
+            panel.style.display = 'block';
+            btn.textContent = '✕ Close';
+            btn.style.background = '#888';
+        } else {
+            panel.style.display = 'none';
+            btn.textContent = 'ℹ About';
+            btn.style.background = '#1F3864';
+        }
+        }
+        // ── LST TEMPERATURE FILTER SLIDER ──────────────────────────────────
+(function() {
+  document.getElementById('lstRange').addEventListener('input', function() {
+    var threshold = parseFloat(this.value);
+    document.getElementById('lstVal').textContent = threshold.toFixed(1);
+
+    // Loop through every LST polygon
+    layer_mb_city_temperature_1.eachLayer(function(layer) {
+      var temp = parseFloat(layer.feature.properties.landsat8_9);
+
+      if (temp >= threshold) {
+        // Show polygons at or above the threshold
+        layer.setStyle({ fillOpacity: 1, opacity: 1 });
+      } else {
+        // Hide polygons below the threshold
+        layer.setStyle({ fillOpacity: 0, opacity: 0 });
+      }
+    });
+  });
+})();
+// ── LST HISTOGRAM ────
+(function() {
+  window.addEventListener('load', function() {
+    var vals = [];
+    layer_mb_city_temperature_1.eachLayer(function(layer) {
+      var v = parseFloat(layer.feature.properties.landsat8_9);
+      if (!isNaN(v)) vals.push(v);
+    });
+
+    var bins = [0, 0, 0, 0, 0];
+    vals.forEach(function(v) {
+      if      (v <= 19.269814) bins[0]++;
+      else if (v <= 21.456700) bins[1]++;
+      else if (v <= 23.269814) bins[2]++;
+      else if (v <= 26.000234) bins[3]++;
+      else                     bins[4]++;
+    });
+
+// ── TREE AGE COLOUR FUNCTION ──────────────────────────
+        function treeColour(age) {
+          if (age === 'Young')       return '#27F538';
+          if (age === 'Mature')      return '#3BA341';
+          if (age === 'Over-mature') return '#BEC211';
+          return '#F2F2F2';
+        }
+    // ── LIVE TREE API ─────────────────────────────────────
+        var treeLayer = L.layerGroup().addTo(map);
+        (function() {
+          var treesVisible = true;
+          var API_URL =
+            'https://discover.data.vic.gov.au/api/3/action/datastore_search' +
+            '?resource_id=0f2a2180-2be0-5a58-a270-7538c35259e6&limit=5000';
+
+          fetch(API_URL)
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+              var records = data.result.records;
+              document.getElementById('treeStatus').textContent =
+                records.length + ' trees loaded (live)';
+
+              records.forEach(function(tree) {
+                var lat = parseFloat(tree.latitude);
+                var lng = parseFloat(tree.longitude);
+                if (isNaN(lat) || isNaN(lng)) return;
+
+                L.circleMarker([lat, lng], {
+                  radius: 3,
+                  fillColor: treeColour(tree.age_description),
+                  color: '#355E3B',
+                  weight: 0.8,
+                  fillOpacity: 0.85
+                }).bindPopup(
+                  '<strong>' + (tree.common_name || 'Unknown') + '</strong><br>' +
+                  '<em>' + (tree.genus || '') + ' ' + (tree.species || '') + '</em><br>' +
+                  'Age class: ' + (tree.age_description || '-') + '<br>' +
+                  'DBH: ' + (tree.diameter_breast_height || '-') + ' cm<br>' +
+                  'Life expectancy: ' + (tree.useful_life_expectancy || '-')
+                ).addTo(treeLayer);
+              });
+            })
+            .catch(function(err) {
+              document.getElementById('treeStatus').textContent = 'API unavailable';
+              console.error('Tree API error:', err);
+            });
+          document.getElementById('treeToggle').addEventListener('click', function() {
+            treesVisible = !treesVisible;
+            if (treesVisible) {
+              treeLayer.addTo(map);
+              this.textContent = 'Hide Trees';
+              this.style.background = '#1B5E20';
+            } else {
+              map.removeLayer(treeLayer);
+              this.textContent = 'Show Trees';
+              this.style.background = '#888';
+            }
+          });
+        })();
+    
+
+    new Chart(document.getElementById('lstChart'), {
+      type: 'bar',
+      data: {
+        labels: ['<19.0', '19.0-21.5', '21.5-23.5', '23.5-26.0', '>26.0'],
+        datasets: [{
+          label: 'SA2 areas',
+          data: bins,
+          backgroundColor: [
+            'rgba(43,131,186,0.85)',
+            'rgba(171,221,164,0.85)',
+            'rgba(255,255,191,0.85)',
+            'rgba(253,174,97,0.85)',
+            'rgba(215,25,28,0.85)'
+          ],
+          borderColor: '#aaa',
+          borderWidth: 0.5
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { font: { size: 8 } }
+          },
+          x: {
+            ticks: { font: { size: 8 }, maxRotation: 30 }
+          }
+        }
+      }
+    });
+  });
+})();
+// ── TREE DENSITY HEATMAP ──────────────────────────────
+        (function() {
+          var heatLayer = null;
+          var heatVisible = false;
+
+          document.getElementById('heatToggle')
+            .addEventListener('click', function() {
+              heatVisible = !heatVisible;
+
+              if (heatVisible) {
+                var points = [];
+                treeLayer.eachLayer(function(layer) {
+                  var ll = layer.getLatLng();
+                  points.push([ll.lat, ll.lng, 0.5]);
+                });
+                heatLayer = L.heatLayer(points, {
+                  radius: 18,
+                  blur: 15,
+                  maxZoom: 17,
+                  gradient: {
+                    0.2: '#ffffb2',
+                    0.5: '#fd8d3c',
+                    0.8: '#e31a1c'
+                  }
+                }).addTo(map);
+                this.textContent = 'Hide Tree Heatmap';
+                this.style.background = '#888';
+              } else {
+                if (heatLayer) map.removeLayer(heatLayer);
+                this.textContent = 'Show Tree Heatmap';
+                this.style.background = '#BF360C';
+              }
+            });
+        })();
+        </script>    
+    
+    <div id="mapAttribution" style="
+    position:absolute; bottom:6px; left:50%;
+    transform:translateX(-50%); z-index:1000;
+    background:rgba(255,255,255,0.88);
+    padding:3px 12px; border-radius:3px;
+    font-family:Arial,sans-serif; font-size:14px;
+    color:#333; border:1px solid #ddd; white-space:nowrap;">
+    Created by [Your Name] | RMIT University |
+    Data: [Current Date]| Built with QGIS &amp; qgis2web
+  </div>
+    </body>
+</html>
